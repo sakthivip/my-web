@@ -50,6 +50,7 @@ def send():
 
         return jsonify({"success": True, "message": "Email Sent Successfully"})
     except Exception as e:
+        print(e)
         return jsonify({"success": False, "message": str(e)})
 
 if __name__ == '__main__':
