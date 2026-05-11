@@ -14,6 +14,7 @@ def home():
 
 @app.route('/send', methods=['POST'])
 def send():
+    print("SEND ROUTE WORKING")
     data = request.get_json()
     name = data.get('name')
     email = data.get('email')
