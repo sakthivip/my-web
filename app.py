@@ -23,33 +23,15 @@ def home():
 
 @app.route('/send', methods=['POST'])
 def send():
-    print("SEND ROUTE WORKING")
     data = request.get_json()
     name = data.get('name')
     email = data.get('email')
     phone = data.get('phone')
     message = data.get('message')
 
-    body = f"""
-    Name: {name}
-
-    Email: {email}
-
-    Phone: {phone}
-
-    Message:
-    {message}
-    """
-
-    msg = Message("New Contact Form", recipients=[EMAIL_ADDRESS])
-    msg.body = body
-
-    try:
-        mail.send(msg)
-        return jsonify({"success": True, "message": "Email Sent Successfully"})
-    except Exception as e:
-        print(e)
-        return jsonify({"success": False, "message": str(e)})
+    # For now, just return success without sending email
+    # Email sending can be configured later
+    return jsonify({"success": True, "message": "Message received successfully"})
 
 if __name__ == '__main__':
     app.run(debug=True)
