@@ -1,12 +1,21 @@
 from flask import Flask, render_template, request, jsonify
-import smtplib
-from email.mime.text import MIMEText
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 
 # Gmail Details
 EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
 EMAIL_PASSWORD = "ezmm yfhz uyyy kwmg"
+
+# Flask-Mail configuration
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = EMAIL_ADDRESS
+app.config['MAIL_PASSWORD'] = EMAIL_PASSWORD
+app.config['MAIL_DEFAULT_SENDER'] = EMAIL_ADDRESS
+
+mail = Mail(app)
 
 @app.route('/')
 def home():
@@ -32,22 +41,11 @@ def send():
     {message}
     """
 
-    msg = MIMEText(body)
-
-    msg['Subject'] = "New Contact Form"
-    msg['From'] = EMAIL_ADDRESS
-    msg['To'] = EMAIL_ADDRESS
+    msg = Message("New Contact Form", recipients=[EMAIL_ADDRESS])
+    msg.body = body
 
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-
-        server.send_message(msg)
-
-        server.quit()
-
+        mail.send(msg)
         return jsonify({"success": True, "message": "Email Sent Successfully"})
     except Exception as e:
         print(e)
