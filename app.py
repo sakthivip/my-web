@@ -11,9 +11,9 @@ EMAIL_PASSWORD = "ezmm yfhz uyyy kwmg"
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = EMAIL_ADDRESS
-app.config['MAIL_PASSWORD'] = EMAIL_PASSWORD
-app.config['MAIL_DEFAULT_SENDER'] = EMAIL_ADDRESS
+app.config['MAIL_USERNAME'] = "techveons.creation.official@gmail.com"
+app.config['MAIL_PASSWORD'] = "ezmm yfhz uyyy kwmg"
+app.config['MAIL_DEFAULT_SENDER'] = "techveons.creation.official@gmail.com"
 
 mail = Mail(app)
 
