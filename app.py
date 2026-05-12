@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "ezmm yfhz uyyy kwmg").strip()
+EMAIL_PASSWORD = "ezmm yfhz uyyy kwmg"
 EMAIL_SMTP_HOST = "smtp.gmail.com"
 EMAIL_SMTP_PORT = 587
 SSL_CONTEXT = ssl.create_default_context()
