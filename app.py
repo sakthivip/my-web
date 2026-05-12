@@ -1,19 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-from flask_mail import Mail, Message
+import smtplib
+from email.mime.text import MIMEText
 
 app = Flask(__name__)
 CORS(app)
 
-# Flask-Mail configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'techveons.creation.official@gmail.com'
-app.config['MAIL_PASSWORD'] = 'ezmm yfhz uyyy kwmg'
-app.config['MAIL_DEFAULT_SENDER'] = 'techveons.creation.official@gmail.com'
-
-mail = Mail(app)
+# Gmail Details
+EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
+EMAIL_PASSWORD = "ezmm yfhz uyyy kwmg"
 
 @app.route('/')
 def home():
@@ -38,15 +33,23 @@ def send():
     {message}
     """
 
-    msg = Message("New Contact Form Submission", recipients=['techveons.creation.official@gmail.com'])
-    msg.body = body
+    msg = MIMEText(body)
+    msg['Subject'] = "New Contact Form Submission"
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = EMAIL_ADDRESS
 
     try:
-        mail.send(msg)
+        print("Attempting to send email...")
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print("Email sent successfully")
         return jsonify({"success": True, "message": "Email sent successfully"})
     except Exception as e:
-        print(f"Email error: {e}")
-        return jsonify({"success": False, "message": "Failed to send email"})
+        print(f"Email sending failed: {e}")
+        return jsonify({"success": False, "message": f"Failed to send email: {str(e)}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
