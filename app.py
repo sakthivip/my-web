@@ -16,24 +16,25 @@ EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "").strip()
 EMAIL_SMTP_HOST = "smtp.gmail.com"
 EMAIL_SMTP_PORT = 587
 EMAIL_SMTP_SSL_PORT = 465
+EMAIL_SMTP_TIMEOUT = 10
 
 
 def get_smtp_server():
     try:
-        server = smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=30)
+        server = smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=EMAIL_SMTP_TIMEOUT)
         server.ehlo()
         server.starttls()
         server.ehlo()
         return server
-    except (socket.error, OSError) as e:
+    except (socket.error, OSError, socket.timeout) as e:
         app.logger.warning(f"SMTP 587 failed: {e}. Trying SMTPS 465...")
         try:
-            server = smtplib.SMTP_SSL(EMAIL_SMTP_HOST, EMAIL_SMTP_SSL_PORT, timeout=30)
+            server = smtplib.SMTP_SSL(EMAIL_SMTP_HOST, EMAIL_SMTP_SSL_PORT, timeout=EMAIL_SMTP_TIMEOUT)
             server.ehlo()
             return server
-        except Exception as ssl_error:
+        except (socket.error, OSError, socket.timeout) as ssl_error:
             app.logger.exception(f"SMTPS 465 failed: {ssl_error}")
-            raise
+            raise ConnectionError("Cannot connect to SMTP server") from ssl_error
 
 
 @app.route('/')
@@ -88,6 +89,10 @@ def send():
     except smtplib.SMTPException as e:
         app.logger.exception("Gmail SMTP error")
         return jsonify(success=False, message="Email service error."), 500
+
+    except (socket.timeout, ConnectionError, OSError) as e:
+        app.logger.exception(f"SMTP network error: {str(e)}")
+        return jsonify(success=False, message="Email server not reachable from this host. Render may block SMTP connections."), 500
 
     except Exception as e:
         app.logger.exception(f"Unexpected error in send route: {str(e)}")
