@@ -1,5 +1,6 @@
 import os
 import smtplib
+import socket
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
@@ -14,6 +15,26 @@ EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "").strip()
 EMAIL_SMTP_HOST = "smtp.gmail.com"
 EMAIL_SMTP_PORT = 587
+EMAIL_SMTP_SSL_PORT = 465
+
+
+def get_smtp_server():
+    try:
+        server = smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=30)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        return server
+    except (socket.error, OSError) as e:
+        app.logger.warning(f"SMTP 587 failed: {e}. Trying SMTPS 465...")
+        try:
+            server = smtplib.SMTP_SSL(EMAIL_SMTP_HOST, EMAIL_SMTP_SSL_PORT, timeout=30)
+            server.ehlo()
+            return server
+        except Exception as ssl_error:
+            app.logger.exception(f"SMTPS 465 failed: {ssl_error}")
+            raise
+
 
 @app.route('/')
 def home():
@@ -53,10 +74,7 @@ def send():
         msg['Reply-To'] = email
 
         app.logger.info(f"Sending email from {email} to {EMAIL_ADDRESS}")
-        with smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=30) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
+        with get_smtp_server() as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
 
