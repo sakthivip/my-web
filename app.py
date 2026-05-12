@@ -1,9 +1,5 @@
 import os
-import smtplib
-import socket
-from email.mime.text import MIMEText
-from email.utils import formataddr
-
+import requests
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
@@ -11,30 +7,10 @@ from werkzeug.exceptions import HTTPException
 app = Flask(__name__)
 CORS(app)
 
-EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "").strip()
-EMAIL_SMTP_HOST = "smtp.gmail.com"
-EMAIL_SMTP_PORT = 587
-EMAIL_SMTP_SSL_PORT = 465
-EMAIL_SMTP_TIMEOUT = 10
-
-
-def get_smtp_server():
-    try:
-        server = smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=EMAIL_SMTP_TIMEOUT)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        return server
-    except (socket.error, OSError, socket.timeout) as e:
-        app.logger.warning(f"SMTP 587 failed: {e}. Trying SMTPS 465...")
-        try:
-            server = smtplib.SMTP_SSL(EMAIL_SMTP_HOST, EMAIL_SMTP_SSL_PORT, timeout=EMAIL_SMTP_TIMEOUT)
-            server.ehlo()
-            return server
-        except (socket.error, OSError, socket.timeout) as ssl_error:
-            app.logger.exception(f"SMTPS 465 failed: {ssl_error}")
-            raise ConnectionError("Cannot connect to SMTP server") from ssl_error
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
+SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+EMAIL_FROM = "techveons.creation.official@gmail.com"
+EMAIL_TO = "techveons.creation.official@gmail.com"
 
 
 @app.route('/')
@@ -56,9 +32,9 @@ def send():
         if not name or not email or not message:
             return jsonify(success=False, message="Name, email, and message are required."), 400
 
-        if not EMAIL_PASSWORD:
-            app.logger.error("EMAIL_PASSWORD not configured on Render")
-            return jsonify(success=False, message="Email password is not configured. Set EMAIL_PASSWORD env var."), 500
+        if not SENDGRID_API_KEY:
+            app.logger.error("SENDGRID_API_KEY not configured")
+            return jsonify(success=False, message="Email service is not configured."), 500
 
         email_body = (
             f"New contact form submission\n\n"
@@ -68,31 +44,32 @@ def send():
             f"Message:\n{message}\n"
         )
 
-        msg = MIMEText(email_body, "plain", "utf-8")
-        msg['Subject'] = "TechVeons Contact Form Submission"
-        msg['From'] = formataddr(("TechVeons Contact Form", EMAIL_ADDRESS))
-        msg['To'] = EMAIL_ADDRESS
-        msg['Reply-To'] = email
+        payload = {
+            "personalizations": [{"to": [{"email": EMAIL_TO}]}],
+            "from": {"email": EMAIL_FROM, "name": "TechVeons Contact Form"},
+            "reply_to": {"email": email},
+            "subject": "TechVeons Contact Form Submission",
+            "content": [{"type": "text/plain", "value": email_body}]
+        }
 
-        app.logger.info(f"Sending email from {email} to {EMAIL_ADDRESS}")
-        with get_smtp_server() as server:
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
+        headers = {
+            "Authorization": f"Bearer {SENDGRID_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-        app.logger.info("Email sent successfully")
-        return jsonify(success=True, message="Email sent successfully."), 200
+        app.logger.info(f"Sending email via SendGrid from {email} to {EMAIL_TO}")
+        response = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=10)
 
-    except smtplib.SMTPAuthenticationError as e:
-        app.logger.exception("Gmail SMTP authentication failed")
-        return jsonify(success=False, message="Email authentication failed."), 500
+        if response.status_code == 202:
+            app.logger.info("Email sent successfully via SendGrid")
+            return jsonify(success=True, message="Email sent successfully."), 200
+        else:
+            app.logger.error(f"SendGrid error: {response.status_code} - {response.text}")
+            return jsonify(success=False, message="Failed to send email."), 500
 
-    except smtplib.SMTPException as e:
-        app.logger.exception("Gmail SMTP error")
+    except requests.exceptions.RequestException as e:
+        app.logger.exception(f"Request error: {str(e)}")
         return jsonify(success=False, message="Email service error."), 500
-
-    except (socket.timeout, ConnectionError, OSError) as e:
-        app.logger.exception(f"SMTP network error: {str(e)}")
-        return jsonify(success=False, message="Email server not reachable from this host. Render may block SMTP connections."), 500
 
     except Exception as e:
         app.logger.exception(f"Unexpected error in send route: {str(e)}")
