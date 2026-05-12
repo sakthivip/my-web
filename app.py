@@ -1,21 +1,12 @@
-from flask import Flask, render_template, request, jsonify
-from flask_mail import Mail, Message
+from flask import Flask, render_template, request
+import smtplib
+from email.mime.text import MIMEText
 
 app = Flask(__name__)
 
 # Gmail Details
-EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
+EMAIL_ADDRESS = "techveons.ceation.official@gmail.com"
 EMAIL_PASSWORD = "ezmm yfhz uyyy kwmg"
-
-# Flask-Mail configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = "techveons.creation.official@gmail.com"
-app.config['MAIL_PASSWORD'] = "ezmm yfhz uyyy kwmg"
-app.config['MAIL_DEFAULT_SENDER'] = "techveons.creation.official@gmail.com"
-
-mail = Mail(app)
 
 @app.route('/')
 def home():
@@ -23,15 +14,41 @@ def home():
 
 @app.route('/send', methods=['POST'])
 def send():
-    data = request.get_json()
-    name = data.get('name')
-    email = data.get('email')
-    phone = data.get('phone')
-    message = data.get('message')
 
-    # For now, just return success without sending email
-    # Email sending can be configured later
-    return jsonify({"success": True, "message": "Message received successfully"})
+    name = request.form.get('name')
+    email = request.form.get('email')
+    subject = request.form.get('subject')
+    message = request.form.get('message')
+
+    body = f"""
+    Name: {name}
+
+    Email: {email}
+
+    Subject: {subject}
+
+    Message:
+    {message}
+    """
+
+    msg = MIMEText(body)
+
+    msg['Subject'] = "New Contact Form"
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = EMAIL_ADDRESS
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+
+        server.login("techveons.ceation.official@gmail.com", "ezmm yfhz uyyy kwmg")
+
+        server.send_message(msg)
+
+        server.quit()
+
+        return "Email Sent Successfully"
+    except Exception as e:
+        return str(e)
 
 if __name__ == '__main__':
     app.run(debug=True)
