@@ -1,15 +1,21 @@
 import os
 import smtplib
+import ssl
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
-CORS(app, resources={r"/send": {"origins": "*"}})
+CORS(app)
 
 EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
-EMAIL_PASSWORD =  "ezmm yfhz uyyy kwmg"
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "ezmm yfhz uyyy kwmg").strip()
+EMAIL_SMTP_HOST = "smtp.gmail.com"
+EMAIL_SMTP_PORT = 587
+SSL_CONTEXT = ssl.create_default_context()
 
 @app.route('/')
 def home():
@@ -19,7 +25,7 @@ def home():
 def send():
     data = request.get_json(silent=True)
     if not data:
-        return jsonify({"success": False, "message": "Request body must be valid JSON."}), 400
+        return jsonify(success=False, message="Request body must be valid JSON."), 400
 
     name = data.get('name', '').strip()
     email = data.get('email', '').strip()
@@ -27,41 +33,53 @@ def send():
     message = data.get('message', '').strip()
 
     if not name or not email or not message:
-        return jsonify({"success": False, "message": "Name, email, and message are required."}), 400
+        return jsonify(success=False, message="Name, email, and message are required."), 400
 
-    body = f"""
-Name: {name}
+    if not EMAIL_PASSWORD:
+        app.logger.error("EMAIL_PASSWORD environment variable is not configured")
+        return jsonify(success=False, message="Email password is not configured."), 500
 
-Email: {email}
+    email_body = (
+        f"New contact form submission\n\n"
+        f"Name: {name}\n"
+        f"Email: {email}\n"
+        f"Phone: {phone or 'N/A'}\n\n"
+        f"Message:\n{message}\n"
+    )
 
-Phone: {phone}
-
-Message:
-{message}
-"""
-
-    msg = MIMEText(body, "plain", "utf-8")
-    msg['Subject'] = "New Contact Form Submission"
-    msg['From'] = EMAIL_ADDRESS
+    msg = MIMEText(email_body, "plain", "utf-8")
+    msg['Subject'] = "TechVeons Contact Form Submission"
+    msg['From'] = formataddr(("TechVeons Contact Form", EMAIL_ADDRESS))
     msg['To'] = EMAIL_ADDRESS
+    msg['Reply-To'] = email
 
     try:
         app.logger.info("Attempting to send contact email...")
-        with smtplib.SMTP('smtp.gmail.com', 587, timeout=20) as server:
+        with smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=20) as server:
             server.ehlo()
-            server.starttls()
+            server.starttls(context=SSL_CONTEXT)
+            server.ehlo()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
 
-        return jsonify({"success": True, "message": "Email sent successfully."}), 200
+        return jsonify(success=True, message="Email sent successfully."), 200
+
+    except smtplib.SMTPAuthenticationError:
+        app.logger.exception("Gmail authentication failed")
+        return jsonify(success=False, message="Email login failed. Verify the Gmail app password."), 500
+
     except Exception:
         app.logger.exception("Failed to send contact email")
-        return jsonify({"success": False, "message": "Failed to send email. Please try again later."}), 500
+        return jsonify(success=False, message="Failed to send email. Please try again later."), 500
 
-@app.errorhandler(500)
-def handle_internal_server_error(error):
-    app.logger.exception("Internal server error")
-    return jsonify({"success": False, "message": "Internal server error."}), 500
+@app.errorhandler(HTTPException)
+def handle_http_exception(error):
+    return jsonify(success=False, message=error.description), error.code
+
+@app.errorhandler(Exception)
+def handle_unhandled_exception(error):
+    app.logger.exception("Unhandled exception")
+    return jsonify(success=False, message="Internal server error."), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
