@@ -1,6 +1,5 @@
 import os
 import smtplib
-import ssl
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
@@ -12,10 +11,9 @@ app = Flask(__name__)
 CORS(app)
 
 EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "ezmm yfhz uyyy kwmg").strip()
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "").strip()
 EMAIL_SMTP_HOST = "smtp.gmail.com"
 EMAIL_SMTP_PORT = 587
-SSL_CONTEXT = ssl.create_default_context()
 
 @app.route('/')
 def home():
@@ -55,9 +53,9 @@ def send():
         msg['Reply-To'] = email
 
         app.logger.info(f"Sending email from {email} to {EMAIL_ADDRESS}")
-        with smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=20) as server:
+        with smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=30) as server:
             server.ehlo()
-            server.starttls(context=SSL_CONTEXT)
+            server.starttls()
             server.ehlo()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
@@ -74,7 +72,7 @@ def send():
         return jsonify(success=False, message="Email service error."), 500
 
     except Exception as e:
-        app.logger.exception("Unexpected error in send route")
+        app.logger.exception(f"Unexpected error in send route: {str(e)}")
         return jsonify(success=False, message="Server error. Please try again later."), 500
 
 @app.errorhandler(HTTPException)
