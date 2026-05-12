@@ -1525,15 +1525,13 @@ document.getElementById('contactForm').addEventListener('submit', async function
 
         } else {
 
-            alert('Failed To Send Message');
+            alert(result.message || 'Failed To Send Message');
 
         }
 
     } catch(error) {
-      console.error(error);
-
-        alert('Server Error');
-
+        console.error(error);
+        alert('Server Error: ' + (error.message || 'Please try again later.'));
     }
 
 });

@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 EMAIL_ADDRESS = "techveons.creation.official@gmail.com"
-EMAIL_PASSWORD = "ezmm yfhz uyyy kwmg"
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "ezmm yfhz uyyy kwmg").strip()
 EMAIL_SMTP_HOST = "smtp.gmail.com"
 EMAIL_SMTP_PORT = 587
 SSL_CONTEXT = ssl.create_default_context()
@@ -36,9 +36,9 @@ def send():
         if not name or not email or not message:
             return jsonify(success=False, message="Name, email, and message are required."), 400
 
-        if not EMAIL_PASSWORD or EMAIL_PASSWORD == "ezmm yfhz uyyy kwmg":
+        if not EMAIL_PASSWORD:
             app.logger.error("EMAIL_PASSWORD not configured on Render")
-            return jsonify(success=False, message="Email service not configured."), 500
+            return jsonify(success=False, message="Email password is not configured. Set EMAIL_PASSWORD env var."), 500
 
         email_body = (
             f"New contact form submission\n\n"
