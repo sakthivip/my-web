@@ -9,7 +9,7 @@ CORS(app)
 
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
-EMAIL_FROM = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@techveons.com")
+SENDGRID_FROM_EMAIL = os.environ.get("SENDGRID_FROM_EMAIL", "").strip()
 EMAIL_TO = "techveons.creation.official@gmail.com"
 
 
@@ -36,6 +36,10 @@ def send():
             app.logger.error("SENDGRID_API_KEY not configured")
             return jsonify(success=False, message="Email service is not configured."), 500
 
+        if not SENDGRID_FROM_EMAIL:
+            app.logger.error("SENDGRID_FROM_EMAIL not configured")
+            return jsonify(success=False, message="SendGrid sender email is not configured. Set SENDGRID_FROM_EMAIL to a verified sender identity."), 500
+
         email_body = (
             f"New contact form submission\n\n"
             f"Name: {name}\n"
@@ -46,7 +50,7 @@ def send():
 
         payload = {
             "personalizations": [{"to": [{"email": EMAIL_TO}]}],
-            "from": {"email": EMAIL_FROM, "name": "TechVeons Contact Form"},
+            "from": {"email": SENDGRID_FROM_EMAIL, "name": "TechVeons Contact Form"},
             "reply_to": {"email": email},
             "subject": "TechVeons Contact Form Submission",
             "content": [{"type": "text/plain", "value": email_body}]
@@ -57,7 +61,7 @@ def send():
             "Content-Type": "application/json"
         }
 
-        app.logger.info(f"Sending email via SendGrid from {EMAIL_FROM} to {EMAIL_TO}. Reply-To: {email}")
+        app.logger.info(f"Sending email via SendGrid from {SENDGRID_FROM_EMAIL} to {EMAIL_TO}. Reply-To: {email}")
         response = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=10)
 
         if response.status_code == 202:
