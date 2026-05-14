@@ -9,7 +9,7 @@ CORS(app)
 
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
-EMAIL_FROM = "techveons.creation.official@gmail.com"
+EMAIL_FROM = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@techveons.com")
 EMAIL_TO = "techveons.creation.official@gmail.com"
 
 
@@ -57,15 +57,16 @@ def send():
             "Content-Type": "application/json"
         }
 
-        app.logger.info(f"Sending email via SendGrid from {email} to {EMAIL_TO}")
+        app.logger.info(f"Sending email via SendGrid from {EMAIL_FROM} to {EMAIL_TO}. Reply-To: {email}")
         response = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=10)
 
         if response.status_code == 202:
-            app.logger.info("Email sent successfully via SendGrid")
+            app.logger.info(f"SendGrid accepted email (status 202) for {email}")
             return jsonify(success=True, message="Email sent successfully."), 200
         else:
-            app.logger.error(f"SendGrid error: {response.status_code} - {response.text}")
-            return jsonify(success=False, message="Failed to send email."), 500
+            error_msg = response.text
+            app.logger.error(f"SendGrid error: {response.status_code} - {error_msg}")
+            return jsonify(success=False, message=f"Email service error: {error_msg}"), 500
 
     except requests.exceptions.RequestException as e:
         app.logger.exception(f"Request error: {str(e)}")
